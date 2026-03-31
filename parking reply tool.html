@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pysäköintitunnus – vastausgeneraattori</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f4f6f8;
+      color: #222;
+    }
+
+    h1, h2 {
+      margin-bottom: 10px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: white;
+      padding: 16px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+      margin-bottom: 6px;
+    }
+
+    textarea, input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #c9d1d9;
+      border-radius: 8px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .row-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    button {
+      background: #0b57d0;
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 12px;
+      margin-right: 8px;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background: #0847ad;
+    }
+
+    .secondary {
+      background: #5f6368;
+    }
+
+    .secondary:hover {
+      background: #4b4f53;
+    }
+
+    .danger {
+      background: #b3261e;
+    }
+
+    .danger:hover {
+      background: #8c1d18;
+    }
+
+    .small {
+      font-size: 13px;
+      color: #555;
+      margin-top: 4px;
+    }
+
+    .template-item {
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: #fafbfc;
+    }
+
+    .detected-box {
+      background: #eef5ff;
+      border: 1px solid #c8dcff;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 10px;
+    }
+
+    .mono {
+      font-family: Consolas, monospace;
+    }
+
+    @media (max-width: 900px) {
+      .row, .row-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Pysäköintitunnuksen vastausgeneraattori</h1>
+
+    <div class="card">
+      <h2>1. Asiakkaan viesti</h2>
+      <label for="customerMessage">Liitä asiakkaan viesti tähän</label>
+      <textarea id="customerMessage" placeholder="Esim. Hei, haluaisin autoon ABC-123 pysäköintitunnuksen kolmeksi kuukaudeksi..."></textarea>
+
+      <button onclick="analyzeMessage()">Tunnista tiedot viestistä</button>
+      <button class="secondary" onclick="clearCustomerMessage()">Tyhjennä viesti</button>
+
+      <div class="detected-box">
+        <strong>Tunnistetut tiedot:</strong>
+        <div id="detectedInfo" class="small">Ei vielä tunnistettuja tietoja.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. Muokattavat tiedot</h2>
+      <div class="row-3">
+        <div>
+          <label for="plate">Rekisteritunnus</label>
+          <input id="plate" type="text" placeholder="ABC-123" />
+        </div>
+        <div>
+          <label for="duration">Kesto / kausi</label>
+          <input id="duration" type="text" placeholder="esim. 2 kuukautta / 12 kk / kausi 1.4.–30.9." />
+        </div>
+        <div>
+          <label for="customerName">Asiakkaan nimi (valinnainen)</label>
+          <input id="customerName" type="text" placeholder="Esim. Matti Meikäläinen" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="ownerName">Omistajan / yrityksen nimi (valinnainen)</label>
+          <input id="ownerName" type="text" placeholder="Esim. Yritys Oy / asiakkaan nimi" />
+        </div>
+        <div>
+          <label for="extraNotes">Lisähuomiot (valinnainen)</label>
+          <input id="extraNotes" type="text" placeholder="Esim. asiakas pyytänyt kiireellistä käsittelyä" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. Valitse vastauspohja</h2>
+      <label for="templateSelect">Vastauspohja</label>
+      <select id="templateSelect"></select>
+
+      <div class="small">
+        Muuttujat joita voit käyttää pohjissa:
+        <span class="mono">{plate}</span>,
+        <span class="mono">{duration}</span>,
+        <span class="mono">{customerName}</span>,
+        <span class="mono">{ownerName}</span>,
+        <span class="mono">{extraNotes}</span>
+      </div>
+
+      <button onclick="generateReply()">Luo vastaus</button>
+      <button class="secondary" onclick="copyReply()">Kopioi vastaus</button>
+    </div>
+
+    <div class="card">
+      <h2>4. Luotu vastaus</h2>
+      <label for="replyOutput">Vastaus</label>
+      <textarea id="replyOutput" placeholder="Luotu vastaus tulee tähän..."></textarea>
+    </div>
+
+    <div class="card">
+      <h2>5. Muokkaa ja lisää omia vastauspohjia</h2>
+      <div id="templateEditor"></div>
+
+      <h3>Lisää uusi pohja</h3>
+      <label for="newTemplateName">Pohjan nimi</label>
+      <input id="newTemplateName" type="text" placeholder="Esim. Ajoneuvo puuttuu rekisteristä" />
+
+      <label for="newTemplateBody">Pohjan teksti</label>
+      <textarea id="newTemplateBody" placeholder="Kirjoita tähän uusi vastauspohja. Käytä tarvittaessa muuttujia kuten {plate} ja {duration}."></textarea>
+
+      <button onclick="addTemplate()">Lisää uusi pohja</button>
+      <button class="secondary" onclick="resetDefaultTemplates()">Palauta oletuspohjat</button>
+    </div>
+  </div>
+
+  <script>
+    const defaultTemplates = [
+      {
+        name: "Pysäköintitunnus päivitetty",
+        body: `Hei{customerNamePart},
+
+Kiitos viestistäsi.
+
+Pysäköintitunnuksen tiedot on päivitetty ajoneuvolle {plate}{durationPart}.
+
+Lisätietoja pysäköintitunnuksista löydät tarvittaessa Helsingin kaupungin verkkosivuilta.
+
+Ystävällisin terveisin
+Helsingin kaupunki
+Kaupunkiympäristö`
+      },
+      {
+        name: "Kilometrikorvaukset puuttuu",
+        body: `Hei{customerNamePart},
+
+Kiitos viestistäsi.
+
+Ennen kuin voimme käsitellä pysäköintitunnusasiaa ajoneuvolle {plate}, tarvitsemme kilometrikorvauksiin liittyvät tiedot / selvityksen.
+
+Voit lähettää puuttuvan selvityksen vastaamalla tähän viestiin, minkä jälkeen voimme jatkaa asian käsittelyä{durationPartSentence}.
+
+Ystävällisin terveisin
+Helsingin kaupunki
+Kaupunkiympäristö`
+      },
+      {
+        name: "Isännöitsijän todistus puuttuu",
+        body: `Hei{customerNamePart},
+
+Kiitos viestistäsi.
+
+Ennen kuin voimme käsitellä pysäköintitunnusasiaa ajoneuvolle {plate}, tarvitsemme isännöitsijän todistuksen.
+
+Voit lähettää puuttuvan todistuksen vastaamalla tähän viestiin, minkä jälkeen voimme jatkaa asian käsittelyä{durationPartSentence}.
+
+Ystävällisin terveisin
+Helsingin kaupunki
+Kaupunkiympäristö`
+      },
+      {
+        name: "Kilometrikorvaukset ja isännöitsijän todistus puuttuvat",
+        body: `Hei{customerNamePart},
+
+Kiitos viestistäsi.
+
+Ennen kuin voimme käsitellä pysäköintitunnusasiaa ajoneuvolle {plate}, tarvitsemme seuraavat puuttuvat liitteet / selvitykset:
+
+- kilometrikorvauksiin liittyvät tiedot / selvityksen
+- isännöitsijän todistuksen
+
+Voit lähettää puuttuvat tiedot vastaamalla tähän viestiin, minkä jälkeen voimme jatkaa asian käsittelyä{durationPartSentence}.
+
+Ystävällisin terveisin
+Helsingin kaupunki
+Kaupunkiympäristö`
+      },
+      {
+        name: "Ajoneuvo ei ole asiakkaan tai yrityksen nimissä",
+        body: `Hei{customerNamePart},
+
+Kiitos viestistäsi.
+
+Emme voi myöntää / päivittää pysäköintitunnusta ajoneuvolle {plate}, koska ajoneuvo ei ole asiakkaan tai yrityksen nimissä.
+
+Tarvittaessa voit lähettää lisäselvitystä ajoneuvon käyttöoikeudesta tai muun tarvittavan dokumentin vastaamalla tähän viestiin.
+
+Ystävällisin terveisin
+Helsingin kaupunki
+Kaupunkiympäristö`
+      }
+    ];
+
+    let templates = [];
+
+    function saveTemplates() {
+      localStorage.setItem("parkingTemplates", JSON.stringify(templates));
+    }
+
+    function loadTemplates() {
+      const saved = localStorage.getItem("parkingTemplates");
+      if (saved) {
+        templates = JSON.parse(saved);
+      } else {
+        templates = JSON.parse(JSON.stringify(defaultTemplates));
+        saveTemplates();
+      }
+      refreshTemplateUI();
+    }
+
+    function resetDefaultTemplates() {
+      if (!confirm("Haluatko varmasti palauttaa oletuspohjat? Omat muutokset korvataan.")) {
+        return;
+      }
+      templates = JSON.parse(JSON.stringify(defaultTemplates));
+      saveTemplates();
+      refreshTemplateUI();
+    }
+
+    function refreshTemplateUI() {
+      const select = document.getElementById("templateSelect");
+      const editor = document.getElementById("templateEditor");
+
+      select.innerHTML = "";
+      editor.innerHTML = "";
+
+      templates.forEach((template, index) => {
+        const option = document.createElement("option");
+        option.value = index;
+        option.textContent = template.name;
+        select.appendChild(option);
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "template-item";
+
+        wrapper.innerHTML = `
+          <label>Pohjan nimi</label>
+          <input type="text" value="${escapeHtml(template.name)}" onchange="updateTemplateName(${index}, this.value)" />
+          <label>Pohjan teksti</label>
+          <textarea onchange="updateTemplateBody(${index}, this.value)">${escapeHtml(template.body)}</textarea>
+          <button class="danger" onclick="deleteTemplate(${index})">Poista pohja</button>
+        `;
+
+        editor.appendChild(wrapper);
+      });
+    }
+
+    function updateTemplateName(index, value) {
+      templates[index].name = value;
+      saveTemplates();
+      refreshTemplateUI();
+    }
+
+    function updateTemplateBody(index, value) {
+      templates[index].body = value;
+      saveTemplates();
+    }
+
+    function deleteTemplate(index) {
+      if (!confirm("Poistetaanko tämä pohja?")) {
+        return;
+      }
+      templates.splice(index, 1);
+      saveTemplates();
+      refreshTemplateUI();
+    }
+
+    function addTemplate() {
+      const name = document.getElementById("newTemplateName").value.trim();
+      const body = document.getElementById("newTemplateBody").value.trim();
+
+      if (!name || !body) {
+        alert("Anna uudelle pohjalle nimi ja teksti.");
+        return;
+      }
+
+      templates.push({ name, body });
+      saveTemplates();
+      refreshTemplateUI();
+
+      document.getElementById("newTemplateName").value = "";
+      document.getElementById("newTemplateBody").value = "";
+    }
+
+    function clearCustomerMessage() {
+      document.getElementById("customerMessage").value = "";
+      document.getElementById("detectedInfo").textContent = "Ei vielä tunnistettuja tietoja.";
+    }
+
+    function analyzeMessage() {
+      const text = document.getElementById("customerMessage").value;
+
+      const plate = detectLicensePlate(text);
+      const duration = detectDuration(text);
+
+      if (plate) {
+        document.getElementById("plate").value = plate;
+      }
+
+      if (duration) {
+        document.getElementById("duration").value = duration;
+      }
+
+      let info = [];
+      info.push("Rekisteritunnus: " + (plate || "ei tunnistettu"));
+      info.push("Kesto / kausi: " + (duration || "ei tunnistettu"));
+
+      document.getElementById("detectedInfo").innerHTML = info.join("<br>");
+    }
+
+    function detectLicensePlate(text) {
+      // Basic Finnish-style plate detection like ABC-123 or AB-123 or XYZ-987
+      const regexes = [
+        /\b([A-ZÅÄÖ]{2,3}-\d{1,3})\b/i,
+        /\b([A-ZÅÄÖ]{2,3}\s\d{1,3})\b/i,
+        /\b([A-ZÅÄÖ]{2,3}\d{1,3})\b/i
+      ];
+
+      for (const regex of regexes) {
+        const match = text.match(regex);
+        if (match) {
+          return normalizePlate(match[1]);
+        }
+      }
+      return "";
+    }
+
+    function normalizePlate(plate) {
+      let p = plate.toUpperCase().replace(/\s+/g, "-").replace(/--+/g, "-");
+      const plainMatch = p.match(/^([A-ZÅÄÖ]{2,3})(\d{1,3})$/);
+      if (plainMatch) {
+        p = plainMatch[1] + "-" + plainMatch[2];
+      }
+      return p;
+    }
+
+    function detectDuration(text) {
+      const lower = text.toLowerCase();
+
+      const patterns = [
+        { regex: /(\d+)\s*(kk|kuukautta|kuukaudeksi|kuukauden|kuukausi)/i, type: "months" },
+        { regex: /(\d+)\s*(v|vuotta|vuodeksi|vuoden)/i, type: "years" },
+        { regex: /(pari)\s*(kuukautta|kk)/i, value: "2 kuukautta" },
+        { regex: /(puoli vuotta|6 kk|kuusi kuukautta)/i, value: "6 kuukautta" },
+        { regex: /(koko vuosi|vuodeksi|12 kk|12 kuukautta)/i, value: "12 kuukautta" },
+        { regex: /(kesäksi)/i, value: "kesäksi" },
+        { regex: /(talveksi)/i, value: "talveksi" },
+        { regex: /(kaudelle\s+[^\n\r,.!]+)/i, type: "raw" },
+        { regex: /(\d{1,2}\.\d{1,2}\.\s*[-–]\s*\d{1,2}\.\d{1,2}\.)/i, type: "raw" }
+      ];
+
+      for (const p of patterns) {
+        const match = lower.match(p.regex);
+        if (match) {
+          if (p.value) return p.value;
+          if (p.type === "months") return `${match[1]} kuukautta`;
+          if (p.type === "years") return `${match[1]} vuotta`;
+          if (p.type === "raw") return match[1];
+        }
+      }
+
+      // Try number words
+      const wordMap = {
+        "yhdeksi": "1 kuukausi",
+        "yksi": "1 kuukausi",
+        "kahdeksi": "2 kuukautta",
+        "kaksi": "2 kuukautta",
+        "kolmeksi": "3 kuukautta",
+        "kolme": "3 kuukautta",
+        "neljäksi": "4 kuukautta",
+        "neljä": "4 kuukautta",
+        "viideksi": "5 kuukautta",
+        "viisi": "5 kuukautta",
+        "kuudeksi": "6 kuukautta",
+        "kuusi": "6 kuukautta",
+        "seitsemäksi": "7 kuukautta",
+        "seitsemän": "7 kuukautta",
+        "kahdeksaksi": "8 kuukautta",
+        "kahdeksan": "8 kuukautta",
+        "yhdeksäksi": "9 kuukautta",
+        "yhdeksän": "9 kuukautta",
+        "kymmeneksi": "10 kuukautta",
+        "kymmenen": "10 kuukautta",
+        "yhdentoista": "11 kuukautta",
+        "kahdentoista": "12 kuukautta"
+      };
+
+      for (const key in wordMap) {
+        const re = new RegExp("\\b" + key + "\\s+(kuukaudeksi|kuukautta|kk)\\b", "i");
+        if (re.test(lower)) {
+          return wordMap[key];
+        }
+      }
+
+      return "";
+    }
+
+    function generateReply() {
+      const selectedIndex = document.getElementById("templateSelect").value;
+      const template = templates[selectedIndex];
+
+      if (!template) {
+        alert("Valitse vastauspohja.");
+        return;
+      }
+
+      const plate = document.getElementById("plate").value.trim() || "[rekisteritunnus]";
+      const duration = document.getElementById("duration").value.trim();
+      const customerName = document.getElementById("customerName").value.trim();
+      const ownerName = document.getElementById("ownerName").value.trim();
+      const extraNotes = document.getElementById("extraNotes").value.trim();
+
+      const customerNamePart = customerName ? " " + customerName : "";
+      const durationPart = duration ? " " + duration + " ajalle" : "";
+      const durationPartSentence = duration ? " (" + duration + ")" : "";
+
+      let output = template.body
+        .replaceAll("{plate}", plate)
+        .replaceAll("{duration}", duration || "[kesto]")
+        .replaceAll("{customerName}", customerName || "")
+        .replaceAll("{ownerName}", ownerName || "")
+        .replaceAll("{extraNotes}", extraNotes || "")
+        .replaceAll("{customerNamePart}", customerNamePart)
+        .replaceAll("{durationPart}", durationPart)
+        .replaceAll("{durationPartSentence}", durationPartSentence);
+
+      document.getElementById("replyOutput").value = output;
+    }
+
+    function copyReply() {
+      const output = document.getElementById("replyOutput");
+      output.select();
+      output.setSelectionRange(0, 99999);
+      navigator.clipboard.writeText(output.value)
+        .then(() => alert("Vastaus kopioitu leikepöydälle."))
+        .catch(() => alert("Kopiointi ei onnistunut automaattisesti. Kopioi teksti käsin."));
+    }
+
+    function escapeHtml(str) {
+      return str
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    loadTemplates();
+  </script>
+</body>
+</html>
